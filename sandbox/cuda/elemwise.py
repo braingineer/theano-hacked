@@ -87,11 +87,6 @@ class NaiveAlgo(object):
     def c_src_kernel(self, node, nodename, nd):
         sio = StringIO()
         # print 'C_SRC_KERNEL', sio.getvalue()
-        print(nodename)
-        import traceback
-        print(node)
-        print(hasattr(node.tag, "trace") and node.tag.trace, nodename)
-
         print("// %s" % str(node.op), file=sio)
         print("// node.op.destroy_map=%s" % str(
             getattr(node.op, 'destroy_map', None)), file=sio)

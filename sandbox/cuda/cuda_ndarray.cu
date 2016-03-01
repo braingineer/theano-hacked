@@ -2616,12 +2616,6 @@ CudaNdarray_setitem(PyObject *o, PyObject  *key, PyObject  *value)
 
     if (cnda_copy_structure_to_device(rval))
     {
-        printf("==============testing ");
-        CudaNdarray *cnda_o = (CudaNdarray *)o;
-        for (int dim = 0; dim < CudaNdarray_NDIM(cnda_o); dim++)
-            printf("%d ", CudaNdarray_HOST_DIMS(cnda_o)[dim]);
-        printf("\n");
-
         PyErr_SetString(PyExc_RuntimeError,
                 "CudaNdarray.__setitem__: syncing structure to device failed");
         Py_DECREF(rval);
@@ -4068,12 +4062,6 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                 if(unbroadcast)
                     cuda_dims = self;
                 //copy from other into self
-
-                /* //JDEV */
-                /* printf("\theeeere\t"); */
-                /* for (int dim=0; dim<CudaNdarray_NDIM(other);dim++) */
-                /*     printf("%d ", CudaNdarray_HOST_DIMS(other)[dim]); */
-                /* printf("\n"); */
 
                 k_elemwise_unary_rowmajor_copy<<<n_blocks, threads_per_block>>>(
                         size,
