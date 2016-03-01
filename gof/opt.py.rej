@@ -1,0 +1,42 @@
+--- gof/opt.py	2015-12-18 09:27:05.647999827 -0800
++++ gof/opt.py	2016-01-11 15:59:07.071999483 -0800
+@@ -1816,13 +1816,13 @@
+         repl_pairs = [(r, rnew) for r, rnew in zip(old_vars, replacements)
+                       if rnew is not r and rnew is not None]
+ 
+-        # # JDEV
+-        # dev_applies = False
+-        # for r, rnew in repl_pairs:
+-        #     from theano.tensor.subtensor import AdvancedIncSubtensor1
+-        #     if isinstance(r.owner.op, AdvancedIncSubtensor1):
+-        #         dev_applies = True
+-        #         print("===========", r, lopt, rnew, rnew.owner.inputs)
++        # JDEV
++        dev_applies = False
++        for r, rnew in repl_pairs:
++            from theano.tensor.subtensor import AdvancedIncSubtensor1
++            if isinstance(r.owner.op, AdvancedIncSubtensor1):
++                dev_applies = True
++                print("===========", r, lopt, rnew, rnew.owner.inputs)
+ 
+         if len(repl_pairs) == 0:
+             return False
+@@ -1831,12 +1831,12 @@
+             return True
+         except Exception as e:
+ 
+-            # # JDEV
+-            # if dev_applies:
+-            #     print("!!!!!!!!!! EXCEPTION: ", e)
+-            #     print("\topt:", lopt)
+-            #     print("\tnode:", node)
+-            #     print("\t", traceback.format_exc())
++            # JDEV
++            if True or dev_applies:
++                print("!!!!!!!!!! EXCEPTION: ", e)
++                print("\topt:", lopt)
++                print("\tnode:", node)
++                print("\t", traceback.format_exc())
+ 
+             # This means the replacements were rejected by the fgraph.
+             #
