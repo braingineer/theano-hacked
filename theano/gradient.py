@@ -1134,7 +1134,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                 if do_override and node.op.__class__ in overrides:
                     input_grads = overrides[node.op.__class__](node.op, inputs, new_output_grads)
                 else:
-                input_grads = node.op.grad(inputs, new_output_grads)
+                    input_grads = node.op.grad(inputs, new_output_grads)
 
                 if input_grads is None:
                     raise TypeError("%s.grad returned NoneType, "
