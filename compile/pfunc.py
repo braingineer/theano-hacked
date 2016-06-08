@@ -174,45 +174,6 @@ def rebuild_collect_shared(outputs,
                              'input. Consider substituting a non-shared'
                              ' variable via the `givens` parameter') % v)
 
-    def find_path_to(output_var, input_var):
-        """
-        Returns a list of each variable on a (not
-        necessarily unique) path from input_var to
-        output_var, where each variable in the list has
-        the preceding variable as one of its inputs.
-        Returns None if no path exists.
-
-        """
-        # If output and input are the same we have a singleton path
-        if output_var is input_var:
-            return [output_var]
-
-        # If output has no inputs then there is no path
-        owner = output_var.owner
-
-        if owner is None:
-            return None
-
-        # If input_var is an input to the output node, there is a
-        # simple two element path
-        inputs = owner.inputs
-
-        if input_var in inputs:
-            return [input_var, output_var]
-
-        # Otherwise we must recurse by searching for a path to one
-        # of our inputs, then appending the output to that path
-        for ipt in inputs:
-            path = find_path_to(ipt, input_var)
-
-            if path is not None:
-                path.append(output_var)
-
-                return path
-
-        # Since none of the above methods returned a path, there is none
-        return None
-
     # Fill update_d and update_expr with provided updates
     if updates is None:
         updates = []
