@@ -186,7 +186,12 @@ class GpuElemwise(GpuOp):
 
     """
 
+    # JDEV: Add an instance ID/counter to GpuElemwise. Each compiled
+    # GpuElemwise kernel will have a unique name that corresponds to a unique
+    # graph node name. This makes it easy to see which graph nodes are taking
+    # up GPU time. I'm not sure why this wasn't already a thing.
     counter = 0
+
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 

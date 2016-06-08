@@ -174,7 +174,6 @@ static int SparseBlockGemv_copy(PyArrayObject *a, npy_intp *b) {
   cudaError_t err;
   PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
   if (aa == NULL) { return -1; }
-  printf("SparseBlockGemv copy\\n");
   err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
                         cudaMemcpyHostToDevice);
   Py_DECREF(aa);
@@ -477,7 +476,6 @@ static int SparseBlockOuter_copy(PyArrayObject *a, npy_intp *b) {
   cudaError_t err;
   PyArrayObject *aa = (PyArrayObject *)PyArray_Cast(a, NPY_INTP);
   if (aa == NULL) { return -1; }
-  printf("SparseBlockOuter copy\\n");
   err = cudaMemcpyAsync(b, PyArray_DATA(aa), PyArray_NBYTES(aa),
                         cudaMemcpyHostToDevice);
   Py_DECREF(aa);

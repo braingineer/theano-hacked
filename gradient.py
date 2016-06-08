@@ -359,6 +359,11 @@ def Lop(f, wrt, eval_points, consider_constant=None,
 # Gradient
 #########################
 
+# JDEV: This function has been lightly modified to accept "override" gradient
+# definitions which replace the default versions defined in op classes.
+# This hack allows us to exploit the Theano symbolic-gradient architecture
+# to calculate Jacobians in a way that fits our application unlike e.g. Theano
+# Rop.
 def grad(cost, wrt, consider_constant=None,
          disconnected_inputs='raise', add_names=True,
          known_grads=None, use_overrides=None,

@@ -420,7 +420,7 @@ def inplace_elemwise_optimizer_op(OP):
                             raised_warning = True
 
                         # JDEV: Ignore this exception if we're working with a
-                        # mask elemwise.
+                        # mask elemwise op.
                         is_mask = hasattr(node.op.scalar_op, "is_mask")
                         if is_mask:
                             print("------------ INPLACE", node)
@@ -436,6 +436,8 @@ def inplace_elemwise_optimizer_op(OP):
             try:
                 fgraph.validate()
             except Exception as e:
+                # JDEV: Ignore exceptions if we're working with a mask elemwise
+                # op.
                 is_mask = (isinstance(node.op, theano.tensor.Elemwise)
                            and hasattr(node.op.scalar_op, "is_mask"))
                 if not (check_each_change == 1 and is_mask):

@@ -807,6 +807,8 @@ def scan(fn,
     dummy_outs = outputs
     if condition is not None:
         dummy_outs.append(condition)
+
+    # JDEV: Accept recurrence graphs with inplace operations.
     dummy_f = function(dummy_args,
                        dummy_outs,
                        updates=updates,

@@ -1149,7 +1149,6 @@ def local_gpu_advanced_incsubtensor1(node):
             gpu_y, = y.owner.inputs
         else:
             gpu_y = as_cuda_ndarray_variable(y)
-        print("=============", node, go_gpu)
         if go_gpu:
             set_instead_of_inc = node.op.set_instead_of_inc
             inplace = node.op.inplace

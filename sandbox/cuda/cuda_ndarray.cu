@@ -4062,7 +4062,6 @@ int CudaNdarray_CopyFromCudaNdarray(CudaNdarray * self,
                 if(unbroadcast)
                     cuda_dims = self;
                 //copy from other into self
-
                 k_elemwise_unary_rowmajor_copy<<<n_blocks, threads_per_block>>>(
                         size,
                         (unsigned int)other->nd,
@@ -5152,8 +5151,6 @@ cnda_copy_structure_to_device(const CudaNdarray * self)
             self->dev_structure = (int*)device_malloc(struct_size* sizeof(int));
             if (NULL == self->dev_structure)
             {
-                printf("======================= eerrr alloc");
-                PyErr_SetString(PyExc_RuntimeError, "error allocing struct");
                 return -1;
             }
         }

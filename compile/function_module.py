@@ -132,52 +132,26 @@ class Supervisor:
     def __init__(self, protected):
         self.protected = list(protected)
 
-        # # JDEV
-        # print("====================init")
-        # print("\t", list(protected))
-        # print("\n\n")
-
     def validate(self, fgraph):
         if not hasattr(fgraph, 'destroyers'):
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
 
-                # # JDEV
-                # if r in fgraph.outputs:
-                #     print("VIOLATION AND IN OUTPUTS!!!!!!!!!")
-                # else:
-                #     print ("VIOLATION AND NOT IN OUTPUTS@@@@@@@@@")
-                #     print (self.protected)
-
-                # JDEV
+                # JDEV: Skip overwrite checks which involve particular shared
+                # variables that we actually want to be overwritten. (We know
+                # that these overwrites will not destroy any data in our
+                # application.. Theano does not by default.)
                 substrs = ["stack_copy", "queue_copy", "aux_stack",
                            "aux_bwd_stack", "bwd/wrt"]
                 skip = False
                 for substr in substrs:
                     if substr in str(r):
                         skip = True
-                        print("SKIP ", r)
+                        #print("SKIP ", r)
                         break
                 if skip:
                     continue
-
-                # # JDEV
-                # # Strip off OutputGuard and check what's underneath..
-                # above_op = r.owner.inputs[0].owner.op
-                # if above_op is not None:
-                #     from theano.sandbox.cuda.basic_ops import GpuElemwise
-                #     print(above_op, isinstance(above_op, (theano.tensor.Elemwise, GpuElemwise)))
-                #     if isinstance(above_op, (theano.tensor.Elemwise, GpuElemwise)):
-                #         print("REACHED ELEMWISE")
-                #         if hasattr(above_op.scalar_op, "is_mask"):
-                #             continue
-
-                # # JDEV: Check if there are any remaining Subtensor*Floats
-                # # consumers, operating e.g. on intermediate results rather than
-                # # on shared variables.
-                # if any("Subtensor1Floats" in str(client[0]) for client in r.clients):
-                #     continue
 
                 raise gof.InconsistencyError("Trying to destroy a protected"
                                              "Variable.", r)
@@ -1106,12 +1080,6 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
 
     for i in xrange(len(fgraph.outputs)):
 
-        # # JDEV
-        # print(fgraph.outputs[i])
-        # if str(fgraph.outputs[i]) in ["queue_orig", "cursors_orig", "stack_orig", "aux_stack_orig"]: #"AdvancedIncSubtensor" in str(fgraph.outputs[i]):
-        #     print("DEEEP", fgraph.outputs[i])
-        #     continue
-
         views_of_output_i = set()
         view_tree_set(alias_root(fgraph.outputs[i]), views_of_output_i)
         copied = False
@@ -1155,9 +1123,12 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                                                 reason="insert_deepcopy")
                             break
                         else:
+                            # JDEV: Don't tag deep-copy ops onto our custom
+                            # inc-subtensor op, which happens inplace.
                             if "AdvancedIncSubtensor" in str(fgraph.outputs[i]):
-                                print("DEEEP", fgraph.outputs[i])
+                                #print("DEEEP", fgraph.outputs[i])
                                 continue
+
                             fgraph.change_input(
                                 'output', i,
                                 deep_copy_op(fgraph.outputs[i]),
