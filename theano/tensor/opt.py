@@ -425,8 +425,8 @@ def inplace_elemwise_optimizer_op(OP):
                         if is_mask:
                             print("------------ INPLACE", node)
                         else:
-                        fgraph.revert(chk)
-                        continue
+                            fgraph.revert(chk)
+                            continue
                     candidate_inputs.remove(candidate_input)
                     node = new_node
                     baseline = inplace_pattern
@@ -441,10 +441,10 @@ def inplace_elemwise_optimizer_op(OP):
                 is_mask = (isinstance(node.op, theano.tensor.Elemwise)
                            and hasattr(node.op.scalar_op, "is_mask"))
                 if not (check_each_change == 1 and is_mask):
-                if not raised_warning:
-                    print(("Some inplace optimization was not "
-                           "performed due to unexpected error"),
-                          file=sys.stderr)
+                    if not raised_warning:
+                        print(("Some inplace optimization was not "
+                               "performed due to unexpected error"),
+                            file=sys.stderr)
                 fgraph.revert(chk)
     return inplace_elemwise_optimizer
 
