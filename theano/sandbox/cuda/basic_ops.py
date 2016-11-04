@@ -186,6 +186,12 @@ class GpuElemwise(GpuOp):
 
     """
 
+    # JDEV: Add an instance ID/counter to GpuElemwise. Each compiled
+    # GpuElemwise kernel will have a unique name that corresponds to a unique
+    # graph node name. This makes it easy to see which graph nodes are taking
+    # up GPU time. I'm not sure why this wasn't already a thing.
+    counter = 0
+
     nin = property(lambda self: self.scalar_op.nin)
     nout = property(lambda self: self.scalar_op.nout)
 
@@ -198,6 +204,8 @@ class GpuElemwise(GpuOp):
         sync = config.gpuelemwise.sync
 
         self.scalar_op = scalar_op
+        self.counter = GpuElemwise.counter
+        GpuElemwise.counter += 1
 
         self.inplace_pattern = inplace_pattern
         self.destroy_map = dict((o, [i]) for o, i in inplace_pattern.items())
@@ -206,7 +214,7 @@ class GpuElemwise(GpuOp):
 
         self._rehash()
 
-        self.src_generator = NaiveAlgo(self.scalar_op, sync=sync,
+        self.src_generator = NaiveAlgo(self.scalar_op, self.counter, sync=sync,
                                        inplace_pattern=self.inplace_pattern)
 
     def __getstate__(self):
@@ -252,8 +260,8 @@ class GpuElemwise(GpuOp):
             items.sort()
             # We need to print the scalar_op, not only the its class name
             # to have the full definition of composite op.
-            return "GpuElemwise{%s}%s" % (self.scalar_op, str(items))
-        return "GpuElemwise{%s,no_inplace}" % (self.scalar_op)
+            return "GpuElemwise%i{%s}inplace:%s" % (self.counter, self.scalar_op, str(items))
+        return "GpuElemwise%i{%s,no_inplace}" % (self.counter, self.scalar_op)
 
     def __repr__(self):
         return self.__str__()
@@ -3634,7 +3642,7 @@ class GpuJoin(tensor.Join, GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (6,)
+        return (7,)
 
 gpu_join = GpuJoin()
 
@@ -3809,7 +3817,7 @@ class GpuAlloc(GpuAllocEmpty):
 
     def c_code_cache_version(self):
         parent_version = super(GpuAlloc, self).c_code_cache_version()
-        return (parent_version, 10)
+        return (parent_version, 11)
 
     def do_constant_folding(self, node):
         for client in node.outputs[0].clients:
@@ -3915,7 +3923,7 @@ class CopyOnNegativeStrides(GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (0,)
+        return (1,)
 
 cp_on_negative_strides = CopyOnNegativeStrides()
 
@@ -3992,7 +4000,7 @@ class GpuContiguous(GpuOp):
         return str
 
     def c_code_cache_version(self):
-        return (2,)
+        return (4,)
 
 gpu_contiguous = GpuContiguous()
 

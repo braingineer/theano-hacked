@@ -137,6 +137,22 @@ class Supervisor:
             return True
         for r in self.protected + list(fgraph.outputs):
             if fgraph.destroyers(r):
+
+                # JDEV: Skip overwrite checks which involve particular shared
+                # variables that we actually want to be overwritten. (We know
+                # that these overwrites will not destroy any data in our
+                # application.. Theano does not by default.)
+                substrs = ["stack_copy", "queue_copy", "aux_stack",
+                           "aux_bwd_stack", "bwd/wrt"]
+                skip = False
+                for substr in substrs:
+                    if substr in str(r):
+                        skip = True
+                        #print("SKIP ", r)
+                        break
+                if skip:
+                    continue
+
                 raise gof.InconsistencyError("Trying to destroy a protected"
                                              "Variable.", r)
 
@@ -1063,6 +1079,7 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
     all_graph_inputs = gof.graph.inputs(fgraph.outputs)
 
     for i in xrange(len(fgraph.outputs)):
+
         views_of_output_i = set()
         view_tree_set(alias_root(fgraph.outputs[i]), views_of_output_i)
         copied = False
@@ -1106,6 +1123,12 @@ def insert_deepcopy(fgraph, wrapped_inputs, wrapped_outputs):
                                                 reason="insert_deepcopy")
                             break
                         else:
+                            # JDEV: Don't tag deep-copy ops onto our custom
+                            # inc-subtensor op, which happens inplace.
+                            if "AdvancedIncSubtensor" in str(fgraph.outputs[i]):
+                                #print("DEEEP", fgraph.outputs[i])
+                                continue
+
                             fgraph.change_input(
                                 'output', i,
                                 deep_copy_op(fgraph.outputs[i]),

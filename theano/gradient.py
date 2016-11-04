@@ -359,9 +359,16 @@ def Lop(f, wrt, eval_points, consider_constant=None,
 # Gradient
 #########################
 
+# JDEV: This function has been lightly modified to accept "override" gradient
+# definitions which replace the default versions defined in op classes.
+# This hack allows us to exploit the Theano symbolic-gradient architecture
+# to calculate Jacobians in a way that fits our application unlike e.g. Theano
+# Rop.
 def grad(cost, wrt, consider_constant=None,
          disconnected_inputs='raise', add_names=True,
-         known_grads=None, return_disconnected='zero',
+         known_grads=None, use_overrides=None,
+         grad_overrides=None,
+         return_disconnected='zero',
          null_gradients='raise'):
     """
     Return symbolic gradients for one or more variables with respect to some
@@ -558,7 +565,9 @@ def grad(cost, wrt, consider_constant=None,
             assert g.type.dtype in tensor.float_dtypes
 
     rval = _populate_grad_dict(var_to_app_to_idx,
-                               grad_dict, wrt, cost_name)
+                               grad_dict, wrt, cost_name,
+                               use_overrides=use_overrides,
+                               overrides=grad_overrides)
 
     for i in xrange(len(rval)):
         if isinstance(rval[i].type, NullType):
@@ -932,7 +941,9 @@ class DisconnectedInputError(ValueError):
 
 
 def _populate_grad_dict(var_to_app_to_idx,
-                        grad_dict, wrt, cost_name=None):
+                        grad_dict, wrt, cost_name=None,
+                        use_overrides=None,
+                        overrides=None):
     """
         Helper function for grad function.
 
@@ -961,16 +972,26 @@ def _populate_grad_dict(var_to_app_to_idx,
     """
     # build a dict mapping node to the terms node contributes to each of
     # its inputs' gradients
-    term_dict = OrderedDict()
+    g_term_dict = OrderedDict()
+    g_term_dict_overrides = OrderedDict()
 
-    def access_term_cache(node):
+    use_overrides = use_overrides or set(wrt)
+    overrides = overrides or {}
+
+    def access_term_cache(node, do_override=False):
         """ Populates term_dict[node] and returns it """
+
+        if do_override:
+            term_dict = g_term_dict_overrides
+        else:
+            term_dict = g_term_dict
 
         if node not in term_dict:
 
             inputs = node.inputs
 
-            output_grads = [access_grad_cache(var) for var in node.outputs]
+            output_grads = [access_grad_cache(var, do_override=do_override)
+                            for var in node.outputs]
 
             # list of bools indicating if each output is connected to the cost
             outputs_connected = [not isinstance(g.type, DisconnectedType)
@@ -1110,7 +1131,10 @@ def _populate_grad_dict(var_to_app_to_idx,
                                 str(o_shape) + " on an output of shape " +
                                 str(g_shape))
 
-                input_grads = node.op.grad(inputs, new_output_grads)
+                if do_override and node.op.__class__ in overrides:
+                    input_grads = overrides[node.op.__class__](node.op, inputs, new_output_grads)
+                else:
+                    input_grads = node.op.grad(inputs, new_output_grads)
 
                 if input_grads is None:
                     raise TypeError("%s.grad returned NoneType, "
@@ -1266,7 +1290,7 @@ def _populate_grad_dict(var_to_app_to_idx,
         return term_dict[node]
 
     # populate grad_dict[var] and return it
-    def access_grad_cache(var):
+    def access_grad_cache(var, do_override=False):
         if var not in grad_dict:
             # If var is not in grad_dict already, we must compute it
             if var in var_to_app_to_idx:
@@ -1276,7 +1300,7 @@ def _populate_grad_dict(var_to_app_to_idx,
                 for node in node_to_idx:
                     for idx in node_to_idx[node]:
 
-                        term = access_term_cache(node)[idx]
+                        term = access_term_cache(node, do_override=do_override)[idx]
 
                         if not isinstance(term, gof.Variable):
                             raise TypeError(
@@ -1292,11 +1316,17 @@ def _populate_grad_dict(var_to_app_to_idx,
                         if isinstance(term.type, DisconnectedType):
                             continue
 
-                        if hasattr(var, 'ndim') and term.ndim != var.ndim:
-                            raise ValueError(
-                                ("%s.grad returned a term with"
-                                 " %d dimensions, but %d are required.") % (
-                                     str(node.op), term.ndim, var.ndim))
+                        # JDEV: Let gradient ops change output ndim.
+                        # This is required in order to support Jacobian outputs
+                        # when hacky Jacobian overrides are passed. It would be
+                        # cleaner to make a "fork" of this function and its
+                        # dependents which is explicitly a Jacobian function.
+                        #
+                        # if hasattr(var, 'ndim') and term.ndim != var.ndim:
+                        #     raise ValueError(
+                        #         ("%s.grad returned a term with"
+                        #          " %d dimensions, but %d are required.") % (
+                        #              str(node.op), term.ndim, var.ndim))
 
                         terms.append(term)
 
@@ -1318,10 +1348,12 @@ def _populate_grad_dict(var_to_app_to_idx,
                 # this variable isn't connected to the cost in the
                 # computational graph
                 grad_dict[var] = disconnected_type()
+
         # end if cache miss
         return grad_dict[var]
 
-    rval = [access_grad_cache(elem) for elem in wrt]
+    rval = [access_grad_cache(elem, do_override=elem in use_overrides)
+            for elem in wrt]
 
     return rval
 

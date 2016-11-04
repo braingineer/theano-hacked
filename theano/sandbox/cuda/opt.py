@@ -1108,6 +1108,7 @@ def local_gpu_advanced_incsubtensor1(node):
             x, y = host_input.owner.inputs[0:2]
             coords = host_input.owner.inputs[2:]
             set_instead_of_inc = host_input.owner.op.set_instead_of_inc
+            inplace = host_input.owner.op.inplace
             if set_instead_of_inc and config.warn.gpu_set_subtensor1:
                 warnings.warn(
                     'Although your current code is fine, please note that '
@@ -1123,10 +1124,10 @@ def local_gpu_advanced_incsubtensor1(node):
                 x.ndim != 2 or
                 y.ndim != 2):
 
-                gpu_op = GpuAdvancedIncSubtensor1(
+                gpu_op = GpuAdvancedIncSubtensor1(inplace=inplace,
                     set_instead_of_inc=set_instead_of_inc)
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(inplace=inplace,
                     set_instead_of_inc=set_instead_of_inc)
             return [gpu_op(as_cuda_ndarray_variable(x),
                            as_cuda_ndarray_variable(y), *coords)]
@@ -1150,6 +1151,7 @@ def local_gpu_advanced_incsubtensor1(node):
             gpu_y = as_cuda_ndarray_variable(y)
         if go_gpu:
             set_instead_of_inc = node.op.set_instead_of_inc
+            inplace = node.op.inplace
             if set_instead_of_inc and config.warn.gpu_set_subtensor1:
                 warnings.warn(
                     'Although your current code is fine, please note that '
@@ -1165,10 +1167,10 @@ def local_gpu_advanced_incsubtensor1(node):
             if (compute_capability < 2 or
                 x.ndim != 2 or
                 y.ndim != 2):
-                gpu_op = GpuAdvancedIncSubtensor1(
+                gpu_op = GpuAdvancedIncSubtensor1(inplace=inplace,
                     set_instead_of_inc=set_instead_of_inc)
             else:
-                gpu_op = GpuAdvancedIncSubtensor1_dev20(
+                gpu_op = GpuAdvancedIncSubtensor1_dev20(inplace=inplace,
                     set_instead_of_inc=set_instead_of_inc)
             return [host_from_gpu(gpu_op(gpu_x, gpu_y, *coords))]
     return False

@@ -70,7 +70,7 @@ class NaiveAlgo(object):
         else:
             return ver
 
-    def __init__(self, scalar_op, sync=True, inplace_pattern=None):
+    def __init__(self, scalar_op, counter, sync=True, inplace_pattern=None):
         if inplace_pattern is None:
             inplace_pattern = {}
         try:
@@ -80,6 +80,7 @@ class NaiveAlgo(object):
         except gof.utils.MethodNotDefined:
             pass
         self.scalar_op = scalar_op
+        self.counter = counter
         self.sync = sync
         self.inplace_pattern = inplace_pattern
 
@@ -93,8 +94,8 @@ class NaiveAlgo(object):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
             print("//    Output ", ipos, str(i.type), file=sio)
-        print("static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
-            self.scalar_op.__class__.__name__, nodename, nd), file=sio)
+        print("static __global__ void kernel%i_%s_%s_%s(unsigned int numEls" % (
+            self.counter, self.scalar_op.__class__.__name__, nodename, nd), file=sio)
         if (nd):
             print("\t,", ", ".join("const int dim%i" % i
                                            for i in xrange(nd)), file=sio)
@@ -211,8 +212,8 @@ class NaiveAlgo(object):
                 print("//    Input  ", ipos, str(i.type), file=sio)
             for ipos, i in enumerate(node.outputs):
                 print("//    Output ", ipos, str(i.type), file=sio)
-            print("static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
-                    self.scalar_op.__class__.__name__,
+            print("static __global__ void kernel%i_%s_%s_%s(unsigned int numEls" % (
+                    self.counter, self.scalar_op.__class__.__name__,
                     nodename,
                     'tiling%i'%nd), file=sio)
             if (nd):
@@ -319,8 +320,8 @@ class NaiveAlgo(object):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
             print("//    Output ", ipos, str(i.type), file=sio)
-        print("static __global__ void kernel_%s_%s_%s(unsigned int numEls" % (
-                self.scalar_op.__class__.__name__,
+        print("static __global__ void kernel%i_%s_%s_%s(unsigned int numEls" % (
+                self.counter, self.scalar_op.__class__.__name__,
                 nodename,
                 'tiling%i_less_registers'%nd), file=sio)
         if (nd):
@@ -471,7 +472,7 @@ class NaiveAlgo(object):
             print("//    Input  ", ipos, str(i.type), file=sio)
         for ipos, i in enumerate(node.outputs):
             print("//    Output ", ipos, str(i.type), file=sio)
-        print("static __global__ void kernel_%s_%s_Ccontiguous (unsigned int numEls" % (self.scalar_op.__class__.__name__, nodename), file=sio)
+        print("static __global__ void kernel%i_%s_%s_Ccontiguous (unsigned int numEls" % (self.counter, self.scalar_op.__class__.__name__, nodename), file=sio)
         # declare inputs
         for ipos, i in enumerate(node.inputs):
             print("\t,", "const float * i%i_data" % ipos, file=sio)
@@ -553,6 +554,7 @@ class NaiveAlgo(object):
         prod_dims = '*'.join(["dims[%i]"%di for di in xrange(nd)]+['1'])
 
         scalar_op = self.scalar_op.__class__.__name__
+        counter = self.counter
 
         sio = StringIO()
         print("""
@@ -576,7 +578,7 @@ class NaiveAlgo(object):
         """ % locals(), file=sio)
         if self.verbose:
             print("""
-                std::cerr << "calling kernel_%(scalar_op)s_%(nodename)s     w numEls" << numEls << " dims"<< d << "\\n";
+                std::cerr << "calling kernel%(counter)i_%(scalar_op)s_%(nodename)s     w numEls" << numEls << " dims"<< d << "\\n";
             """ % locals(), file=sio)
             print('std::cerr << ' + " << ' ' <<  ".join(['"  "']+list("dims[%i]"%di
                 for di in xrange(nd)) + ["'\\n';"]), file=sio)
@@ -778,6 +780,7 @@ nd_collapse_[i]=0;
                 kernel_call_args.append("o%i_data"%ipos)
             kernel_call_args = ", ".join(kernel_call_args)
             verb = ""
+            counter = self.counter
             if self.verbose:
                 verb = 'std::cerr << "   Running ccontiguous version\\n";'
             print("""
@@ -790,7 +793,7 @@ nd_collapse_[i]=0;
                 // next start adding more warps per multiprocessor
                 if (threads_per_block * n_blocks < numEls)
                     threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
-                kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel%(counter)i_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
 
                 //std::cerr << "calling callkernel returned\\n";
                 """ % locals(), file=sio)
@@ -803,7 +806,7 @@ nd_collapse_[i]=0;
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
                          "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err),
                          n_blocks, threads_per_block,
-                         "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
+                         "kernel%(counter)i_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
 
                 }
@@ -834,6 +837,7 @@ nd_collapse_[i]=0;
                 # std::cerr << numEls << dims[0] << i0_data, i0_str[0] << o0_data, o0_str[0]\n;
 
             kernel_call_args = ", ".join(kernel_call_args)
+            counter = self.counter
 
             print("""
                 //first use at least a full warp
@@ -846,7 +850,7 @@ nd_collapse_[i]=0;
                 if (threads_per_block * n_blocks < numEls)
                     threads_per_block = std::min(numEls/n_blocks, (unsigned int)NUM_VECTOR_OP_THREADS_PER_BLOCK);
 
-                kernel_%(scalar_op)s_%(nodename)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
+                kernel%(counter)i_%(scalar_op)s_%(nodename)s_%(force_nd)s<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s);
                 """ % locals(), file=sio)
             if sync:
                 print("""
@@ -857,7 +861,7 @@ nd_collapse_[i]=0;
                     PyErr_Format(PyExc_RuntimeError, "Cuda error: %%s: %%s.\\n    n_blocks=%%i threads_per_block=%%i\\n   Call: %%s\\n",
                          "GpuElemwise %(nodename)s %(scalar_op)s", cudaGetErrorString(err),
                          n_blocks, threads_per_block,
-                         "kernel_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
+                         "kernel%(counter)i_%(scalar_op)s_%(nodename)s_Ccontiguous<<<n_blocks, threads_per_block>>>(%(kernel_call_args)s)");
                     return -1;
 
                 }

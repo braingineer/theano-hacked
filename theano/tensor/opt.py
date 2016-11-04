@@ -418,8 +418,15 @@ def inplace_elemwise_optimizer_op(OP):
                                   file=sys.stderr)
                             print(e, file=sys.stderr)
                             raised_warning = True
-                        fgraph.revert(chk)
-                        continue
+
+                        # JDEV: Ignore this exception if we're working with a
+                        # mask elemwise op.
+                        is_mask = hasattr(node.op.scalar_op, "is_mask")
+                        if is_mask:
+                            print("------------ INPLACE", node)
+                        else:
+                            fgraph.revert(chk)
+                            continue
                     candidate_inputs.remove(candidate_input)
                     node = new_node
                     baseline = inplace_pattern
@@ -428,11 +435,16 @@ def inplace_elemwise_optimizer_op(OP):
         if nb_change_no_validate > 0:
             try:
                 fgraph.validate()
-            except Exception:
-                if not raised_warning:
-                    print(("Some inplace optimization was not "
-                           "performed due to unexpected error"),
-                          file=sys.stderr)
+            except Exception as e:
+                # JDEV: Ignore exceptions if we're working with a mask elemwise
+                # op.
+                is_mask = (isinstance(node.op, theano.tensor.Elemwise)
+                           and hasattr(node.op.scalar_op, "is_mask"))
+                if not (check_each_change == 1 and is_mask):
+                    if not raised_warning:
+                        print(("Some inplace optimization was not "
+                               "performed due to unexpected error"),
+                            file=sys.stderr)
                 fgraph.revert(chk)
     return inplace_elemwise_optimizer
 

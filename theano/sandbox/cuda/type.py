@@ -572,7 +572,7 @@ theano.compile.register_deep_copy_op_c_code(
             }
         }
         """,
-        version=3)
+        version=4)
 
 
 # THIS WORKS But CudaNdarray instances don't compare equal to one

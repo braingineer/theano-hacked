@@ -860,11 +860,13 @@ class Scan(PureOp):
         # make_thunk can be called many times on the same op
         # we do not want to recompile the inner fct every time.
         if not getattr(self, 'fn', None):
+            # JDEV: Accept recurrence graphs with inplace operations.
             self.fn = function(wrapped_inputs,
                                wrapped_outputs,
                                mode=compilation_mode,
                                name=self.name,
                                profile=profile,
+                               accept_inplace=True,
                                on_unused_input='ignore')
 
         # Analyse the compile inner function to determine which inputs and
